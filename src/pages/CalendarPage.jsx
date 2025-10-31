@@ -33,10 +33,16 @@ export default function CalendarPage({ darkMode }) {
 
     const data = await getDocuments();
     
-    // Filtrar turnos del mes actual
+    // Filtrar turnos del mes actual - comparar fechas como strings
     const filteredData = data.filter(apt => {
-      const aptDate = new Date(apt.date);
-      return aptDate >= firstDay && aptDate <= lastDay;
+      // Extraer año-mes-día del string de fecha
+      const aptDateStr = apt.date.substring(0, 10); // YYYY-MM-DD
+      const [aptYear, aptMonth, aptDay] = aptDateStr.split('-').map(Number);
+      
+      const month = date.getMonth() + 1; // JavaScript months are 0-indexed
+      const year = date.getFullYear();
+      
+      return aptYear === year && aptMonth === month;
     });
     
     setAppointments(filteredData);
@@ -46,8 +52,10 @@ export default function CalendarPage({ darkMode }) {
   const groupByDay = (data) => {
     const grouped = {};
     data.forEach((apt) => {
-      const aptDate = new Date(apt.date);
-      const day = aptDate.getDate();
+      // Extraer el día del string de fecha YYYY-MM-DD
+      const aptDateStr = apt.date.substring(0, 10);
+      const [, , dayStr] = aptDateStr.split('-');
+      const day = parseInt(dayStr, 10);
       
       if (!grouped[day]) grouped[day] = [];
       grouped[day].push(apt);
@@ -127,8 +135,10 @@ export default function CalendarPage({ darkMode }) {
     // Si el número no tiene código de país, asumir Argentina (+54)
     const phoneWithCountry = cleanPhone.startsWith('54') ? cleanPhone : `54${cleanPhone}`;
 
-    // Formatear la fecha del turno
-    const appointmentDate = new Date(appointment.date);
+    // Crear fecha desde el string YYYY-MM-DD sin conversión de zona horaria
+    const [year, month, day] = appointment.date.substring(0, 10).split('-').map(Number);
+    const appointmentDate = new Date(year, month - 1, day);
+    
     const dateStr = appointmentDate.toLocaleDateString('es-AR', { 
       weekday: 'long', 
       year: 'numeric', 

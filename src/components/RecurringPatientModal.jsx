@@ -2,6 +2,15 @@
 import { useState, useEffect } from 'react';
 import { FiX, FiCalendar, FiClock, FiDollarSign } from 'react-icons/fi';
 
+// Función helper para convertir Date a string local YYYY-MM-DD
+const dateToLocalString = (date) => {
+  if (!date) return '';
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 export default function RecurringPatientModal({ 
   darkMode, 
   isOpen, 
@@ -37,7 +46,7 @@ export default function RecurringPatientModal({
 
   useEffect(() => {
     if (isOpen) {
-      // Establecer fechas por defecto
+      // Establecer fechas por defecto usando la función helper
       const firstDay = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
       const lastDay = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0);
       
@@ -48,8 +57,8 @@ export default function RecurringPatientModal({
         amount: '',
         time: '',
         weekDays: [],
-        startDate: firstDay.toISOString().split('T')[0],
-        endDate: lastDay.toISOString().split('T')[0],
+        startDate: dateToLocalString(firstDay),
+        endDate: dateToLocalString(lastDay),
       });
       setSearchTerm('');
       calculateGeneratedAppointments([], firstDay, lastDay);
@@ -58,8 +67,11 @@ export default function RecurringPatientModal({
 
   useEffect(() => {
     if (formData.weekDays.length > 0 && formData.startDate && formData.endDate) {
-      const start = new Date(formData.startDate);
-      const end = new Date(formData.endDate);
+      // Crear fechas desde los strings sin conversión de zona horaria
+      const [startYear, startMonth, startDay] = formData.startDate.split('-').map(Number);
+      const [endYear, endMonth, endDay] = formData.endDate.split('-').map(Number);
+      const start = new Date(startYear, startMonth - 1, startDay);
+      const end = new Date(endYear, endMonth - 1, endDay);
       calculateGeneratedAppointments(formData.weekDays, start, end);
     } else {
       setGeneratedCount(0);
@@ -137,8 +149,12 @@ export default function RecurringPatientModal({
 
     // Generar todos los turnos
     const appointments = [];
-    const startDate = new Date(formData.startDate);
-    const endDate = new Date(formData.endDate);
+    
+    // Crear fechas desde los strings sin conversión de zona horaria
+    const [startYear, startMonth, startDay] = formData.startDate.split('-').map(Number);
+    const [endYear, endMonth, endDay] = formData.endDate.split('-').map(Number);
+    const startDate = new Date(startYear, startMonth - 1, startDay);
+    const endDate = new Date(endYear, endMonth - 1, endDay);
     const current = new Date(startDate);
 
     while (current <= endDate) {
@@ -149,7 +165,7 @@ export default function RecurringPatientModal({
           insurance: formData.insurance,
           amount: Number(formData.amount),
           time: formData.time,
-          date: current.toISOString().split('T')[0],
+          date: dateToLocalString(current), // Usar función helper
           paid: false,
           recurring: true, // Marca para identificar turnos recurrentes
         });
@@ -192,6 +208,7 @@ export default function RecurringPatientModal({
               onChange={(e) => handlePatientSearch(e.target.value)}
               onFocus={() => searchTerm && setShowDropdown(true)}
               placeholder="Buscar paciente..."
+              required
               className={`w-full px-3 py-2 rounded-lg border transition ${
                 darkMode
                   ? 'bg-slate-700 border-slate-600 text-white placeholder-gray-400'
@@ -257,6 +274,7 @@ export default function RecurringPatientModal({
                 name="startDate"
                 value={formData.startDate}
                 onChange={handleChange}
+                required
                 className={`w-full px-3 py-2 rounded-lg border transition ${
                   darkMode
                     ? 'bg-slate-700 border-slate-600 text-white'
@@ -275,6 +293,7 @@ export default function RecurringPatientModal({
                 value={formData.endDate}
                 onChange={handleChange}
                 min={formData.startDate}
+                required
                 className={`w-full px-3 py-2 rounded-lg border transition ${
                   darkMode
                     ? 'bg-slate-700 border-slate-600 text-white'
@@ -296,6 +315,7 @@ export default function RecurringPatientModal({
                 name="time"
                 value={formData.time}
                 onChange={handleChange}
+                required
                 className={`w-full px-3 py-2 rounded-lg border transition ${
                   darkMode
                     ? 'bg-slate-700 border-slate-600 text-white'
@@ -316,6 +336,7 @@ export default function RecurringPatientModal({
                 placeholder="0.00"
                 step="0.01"
                 min="0"
+                required
                 className={`w-full px-3 py-2 rounded-lg border transition ${
                   darkMode
                     ? 'bg-slate-700 border-slate-600 text-white placeholder-gray-400'

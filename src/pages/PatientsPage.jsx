@@ -4,7 +4,13 @@ import PatientList from '../components/PatientList';
 import { useFirestore } from '../hooks/useFirestore';
 import { usePatients } from '../hooks/usePatients';
 import { FiX } from 'react-icons/fi';
-import { formatDate } from '../utils/dateUtils';
+
+// Función helper para comparar fechas como strings
+const compareDateStrings = (dateStr1, dateStr2) => {
+  const d1 = dateStr1.substring(0, 10); // YYYY-MM-DD
+  const d2 = dateStr2.substring(0, 10);
+  return d2.localeCompare(d1); // orden descendente
+};
 
 export default function PatientsPage({ darkMode }) {
   const { addDocument, updateDocument, deleteDocument } = useFirestore('patients');
@@ -61,7 +67,9 @@ export default function PatientsPage({ darkMode }) {
   const handleViewAppointments = async (patientId) => {
     const allAppointments = await getDocuments();
     const filtered = allAppointments.filter((a) => a.patientId === patientId);
-    setPatientAppointments(filtered.sort((a, b) => new Date(b.date) - new Date(a.date)));
+    // Ordenar por fecha (string) en orden descendente
+    const sorted = filtered.sort((a, b) => compareDateStrings(a.date, b.date));
+    setPatientAppointments(sorted);
     setShowAppointments(true);
   };
 
@@ -88,7 +96,7 @@ export default function PatientsPage({ darkMode }) {
               <h2 className={`text-xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
                 {editingPatient ? 'Editar Paciente' : 'Nuevo Paciente'}
               </h2>
-              <button onClick={() => setShowModal(false)} className="hover:opacity-70">
+              <button onClick={() => setShowModal(false)} className={`hover:opacity-70 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
                 <FiX size={24} />
               </button>
             </div>
@@ -132,19 +140,23 @@ export default function PatientsPage({ darkMode }) {
 
               <div>
                 <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                  Teléfono
+                  Teléfono (WhatsApp)
                 </label>
                 <input
                   type="tel"
                   name="phone"
                   value={formData.phone}
                   onChange={handleChange}
+                  placeholder="Ej: 351-1234567"
                   className={`w-full px-3 py-2 rounded-lg border transition ${
                     darkMode
-                      ? 'bg-slate-700 border-slate-600 text-white'
+                      ? 'bg-slate-700 border-slate-600 text-white placeholder-gray-400'
                       : 'bg-white border-gray-300 text-gray-900'
                   }`}
                 />
+                <p className={`text-xs mt-1 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                  📱 Incluir código de área para notificaciones por WhatsApp
+                </p>
               </div>
 
               <div>
@@ -156,9 +168,10 @@ export default function PatientsPage({ darkMode }) {
                   name="insurance"
                   value={formData.insurance}
                   onChange={handleChange}
+                  placeholder="Ej: OSDE, APROSS..."
                   className={`w-full px-3 py-2 rounded-lg border transition ${
                     darkMode
-                      ? 'bg-slate-700 border-slate-600 text-white'
+                      ? 'bg-slate-700 border-slate-600 text-white placeholder-gray-400'
                       : 'bg-white border-gray-300 text-gray-900'
                   }`}
                 />
@@ -173,9 +186,10 @@ export default function PatientsPage({ darkMode }) {
                   value={formData.notes}
                   onChange={handleChange}
                   rows="3"
+                  placeholder="Alergias, condiciones especiales..."
                   className={`w-full px-3 py-2 rounded-lg border transition resize-none ${
                     darkMode
-                      ? 'bg-slate-700 border-slate-600 text-white'
+                      ? 'bg-slate-700 border-slate-600 text-white placeholder-gray-400'
                       : 'bg-white border-gray-300 text-gray-900'
                   }`}
                 />
@@ -213,47 +227,60 @@ export default function PatientsPage({ darkMode }) {
       {showAppointments && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
           <div className={`${darkMode ? 'bg-slate-800' : 'bg-white'} rounded-lg shadow-2xl w-full max-w-2xl max-h-[80vh] overflow-y-auto`}>
-            <div className={`flex justify-between items-center p-6 border-b ${darkMode ? 'border-slate-700' : 'border-gray-200'} sticky top-0 bg-inherit`}>
+            <div className={`flex justify-between items-center p-6 border-b ${darkMode ? 'border-slate-700' : 'border-gray-200'} sticky top-0 bg-inherit z-10`}>
               <h2 className={`text-xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
                 Historial de Turnos
               </h2>
-              <button onClick={() => setShowAppointments(false)} className="hover:opacity-70">
+              <button onClick={() => setShowAppointments(false)} className={`hover:opacity-70 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
                 <FiX size={24} />
               </button>
             </div>
 
             <div className="p-6 space-y-3">
               {patientAppointments.length > 0 ? (
-                patientAppointments.map((apt) => (
-                  <div
-                    key={apt.id}
-                    className={`p-4 rounded-lg border ${
-                      darkMode
-                        ? 'bg-slate-700 border-slate-600'
-                        : 'bg-gray-50 border-gray-200'
-                    }`}
-                  >
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <p className={`font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-                          {formatDate(apt.date)} - {apt.time}
-                        </p>
-                        <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                          Obra Social: {apt.insurance}
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-bold text-lg">${(Number(apt.amount) || 0).toFixed(2)}</p>
-                        <p className={`text-sm font-medium ${apt.paid ? 'text-green-500' : 'text-yellow-500'}`}>
-                          {apt.paid ? '✓ Pagado' : '⚠ Pendiente'}
-                        </p>
+                patientAppointments.map((apt) => {
+                  // Crear fecha desde el string sin conversión de zona horaria
+                  const [year, month, day] = apt.date.substring(0, 10).split('-').map(Number);
+                  const appointmentDate = new Date(year, month - 1, day);
+                  
+                  return (
+                    <div
+                      key={apt.id}
+                      className={`p-4 rounded-lg border ${
+                        darkMode
+                          ? 'bg-slate-700 border-slate-600'
+                          : 'bg-gray-50 border-gray-200'
+                      }`}
+                    >
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <p className={`font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                            {appointmentDate.toLocaleDateString('es-AR', { 
+                              weekday: 'long', 
+                              year: 'numeric', 
+                              month: 'long', 
+                              day: 'numeric' 
+                            })} - {apt.time}
+                          </p>
+                          {apt.insurance && (
+                            <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                              Obra Social: {apt.insurance}
+                            </p>
+                          )}
+                        </div>
+                        <div className="text-right">
+                          <p className="font-bold text-lg">${(Number(apt.amount) || 0).toFixed(2)}</p>
+                          <p className={`text-sm font-medium ${apt.paid ? 'text-green-500' : 'text-yellow-500'}`}>
+                            {apt.paid ? '✓ Pagado' : '⚠ Pendiente'}
+                          </p>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))
+                  );
+                })
               ) : (
                 <p className={`text-center py-8 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                  No hay turnos registrados
+                  No hay turnos registrados para este paciente
                 </p>
               )}
             </div>

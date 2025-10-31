@@ -6,11 +6,23 @@ import { FiFilter, FiEdit2, FiTrash2 } from 'react-icons/fi';
 import TurnoModal from '../components/TurnoModal';
 import { usePatients } from '../hooks/usePatients';
 
+// Función helper para comparar fechas como strings
+const compareDateStrings = (dateStr1, dateStr2) => {
+  const d1 = dateStr1.substring(0, 10); // YYYY-MM-DD
+  const d2 = dateStr2.substring(0, 10);
+  return d2.localeCompare(d1); // orden descendente
+};
+
 export default function PaymentsPage({ darkMode }) {
   const [appointments, setAppointments] = useState([]);
   const [filteredAppointments, setFilteredAppointments] = useState([]);
   const [filterStatus, setFilterStatus] = useState('todos');
-  const [filterMonth, setFilterMonth] = useState(new Date().toISOString().split('T')[0].slice(0, 7));
+  const [filterMonth, setFilterMonth] = useState(() => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    return `${year}-${month}`;
+  });
   const [showModal, setShowModal] = useState(false);
   const [editingTurno, setEditingTurno] = useState(null);
 
@@ -27,7 +39,8 @@ export default function PaymentsPage({ darkMode }) {
 
   const loadAppointments = async () => {
     const data = await getDocuments();
-    const sorted = data.sort((a, b) => new Date(b.date) - new Date(a.date));
+    // Ordenar por fecha (string) en orden descendente
+    const sorted = data.sort((a, b) => compareDateStrings(a.date, b.date));
     setAppointments(sorted);
   };
 
@@ -131,7 +144,7 @@ export default function PaymentsPage({ darkMode }) {
         }`}
       >
         <div className="flex items-center gap-2 mb-4">
-          <FiFilter size={20} />
+          <FiFilter size={20} className={darkMode ? 'text-white' : 'text-gray-900'} />
           <h3 className={`font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
             Filtros
           </h3>
@@ -187,72 +200,82 @@ export default function PaymentsPage({ darkMode }) {
 
         <div className="space-y-2">
           {filteredAppointments.length > 0 ? (
-            filteredAppointments.map((apt) => (
-              <div
-                key={apt.id}
-                className={`p-4 rounded-lg border flex justify-between items-center transition ${
-                  darkMode
-                    ? 'bg-slate-700 border-slate-600 hover:bg-slate-600'
-                    : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
-                }`}
-              >
-                <div className="flex-1">
-                  <div className="flex items-center gap-3">
-                    <span className={`text-2xl ${apt.paid ? '💰' : '⚠️'}`}></span>
-                    <div>
-                      <p className={`font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-                        {apt.patientName}
+            filteredAppointments.map((apt) => {
+              // Crear fecha desde el string sin conversión de zona horaria
+              const [year, month, day] = apt.date.substring(0, 10).split('-').map(Number);
+              const appointmentDate = new Date(year, month - 1, day);
+              
+              return (
+                <div
+                  key={apt.id}
+                  className={`p-4 rounded-lg border flex justify-between items-center transition ${
+                    darkMode
+                      ? 'bg-slate-700 border-slate-600 hover:bg-slate-600'
+                      : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
+                  }`}
+                >
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3">
+                      <span className={`text-2xl`}>{apt.paid ? '💰' : '⚠️'}</span>
+                      <div>
+                        <p className={`font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                          {apt.patientName}
+                        </p>
+                        <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                          {formatDate(appointmentDate)} - {apt.time}
+                        </p>
+                        {apt.insurance && (
+                          <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                            {apt.insurance}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-4">
+                    <div className="text-right">
+                      <p className="font-bold text-lg">${(Number(apt.amount) || 0).toFixed(2)}</p>
+                      <p
+                        className={`text-sm font-medium ${
+                          apt.paid ? 'text-green-500' : 'text-yellow-500'
+                        }`}
+                      >
+                        {apt.paid ? '✓ Pagado' : '✗ Pendiente'}
                       </p>
-                      <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                        {formatDate(apt.date)} - {apt.time}
-                      </p>
-                      <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                        {apt.insurance}
-                      </p>
+                    </div>
+
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => {
+                          setEditingTurno(apt);
+                          setShowModal(true);
+                        }}
+                        className={`p-2 rounded transition ${
+                          darkMode
+                            ? 'bg-slate-600 hover:bg-slate-500 text-white'
+                            : 'bg-gray-200 hover:bg-gray-300'
+                        }`}
+                        title="Editar turno"
+                      >
+                        <FiEdit2 size={18} />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(apt.id)}
+                        className={`p-2 rounded transition ${
+                          darkMode
+                            ? 'bg-red-600/20 hover:bg-red-600/30 text-red-400'
+                            : 'bg-red-100 hover:bg-red-200 text-red-600'
+                        }`}
+                        title="Eliminar turno"
+                      >
+                        <FiTrash2 size={18} />
+                      </button>
                     </div>
                   </div>
                 </div>
-
-                <div className="flex items-center gap-4">
-                  <div className="text-right">
-                    <p className="font-bold text-lg">${(Number(apt.amount) || 0).toFixed(2)}</p>
-                    <p
-                      className={`text-sm font-medium ${
-                        apt.paid ? 'text-green-500' : 'text-yellow-500'
-                      }`}
-                    >
-                      {apt.paid ? '✓ Pagado' : '✗ Pendiente'}
-                    </p>
-                  </div>
-
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => {
-                        setEditingTurno(apt);
-                        setShowModal(true);
-                      }}
-                      className={`p-2 rounded transition ${
-                        darkMode
-                          ? 'bg-slate-600 hover:bg-slate-500 text-white'
-                          : 'bg-gray-200 hover:bg-gray-300'
-                      }`}
-                    >
-                      <FiEdit2 size={18} />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(apt.id)}
-                      className={`p-2 rounded transition ${
-                        darkMode
-                          ? 'bg-red-600/20 hover:bg-red-600/30 text-red-400'
-                          : 'bg-red-100 hover:bg-red-200 text-red-600'
-                      }`}
-                    >
-                      <FiTrash2 size={18} />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))
+              );
+            })
           ) : (
             <div
               className={`text-center py-12 ${

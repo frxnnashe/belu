@@ -2,6 +2,15 @@
 import { useState, useEffect } from 'react';
 import { FiX } from 'react-icons/fi';
 
+// Función helper para convertir Date a string local YYYY-MM-DD
+const dateToLocalString = (date) => {
+  if (!date) return '';
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 export default function TurnoModal({ darkMode, isOpen, onClose, onSave, turno, patients, selectedDate }) {
   const [formData, setFormData] = useState({
     patientId: '',
@@ -24,7 +33,7 @@ export default function TurnoModal({ darkMode, isOpen, onClose, onSave, turno, p
       setFormData({
         patientId: '',
         patientName: '',
-        date: selectedDate ? selectedDate.toISOString().split('T')[0] : '',
+        date: selectedDate ? dateToLocalString(selectedDate) : '',
         time: '',
         insurance: '',
         amount: '',
@@ -69,15 +78,18 @@ export default function TurnoModal({ darkMode, isOpen, onClose, onSave, turno, p
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!formData.patientId || !formData.time || !formData.amount) {
-      alert('Por favor completa todos los campos');
+    if (!formData.patientId || !formData.time || !formData.amount || !formData.date) {
+      alert('Por favor completa todos los campos obligatorios');
       return;
     }
-    // Convertir amount a número
+    
+    // Convertir amount a número y asegurar que la fecha se guarde correctamente
     const dataToSave = {
       ...formData,
-      amount: Number(formData.amount) || 0
+      amount: Number(formData.amount) || 0,
+      date: formData.date // Ya está en formato YYYY-MM-DD
     };
+    
     onSave(dataToSave);
     onClose();
   };
@@ -91,7 +103,7 @@ export default function TurnoModal({ darkMode, isOpen, onClose, onSave, turno, p
           <h2 className={`text-xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
             {turno ? 'Editar Turno' : 'Nuevo Turno'}
           </h2>
-          <button onClick={onClose} className="hover:opacity-70">
+          <button onClick={onClose} className={`hover:opacity-70 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
             <FiX size={24} />
           </button>
         </div>
@@ -113,9 +125,10 @@ export default function TurnoModal({ darkMode, isOpen, onClose, onSave, turno, p
                   ? 'bg-slate-700 border-slate-600 text-white placeholder-gray-400'
                   : 'bg-white border-gray-300 text-gray-900'
               }`}
+              required
             />
             {showDropdown && filteredPatients.length > 0 && (
-              <div className={`absolute top-full left-0 right-0 mt-1 rounded-lg shadow-lg z-10 ${
+              <div className={`absolute top-full left-0 right-0 mt-1 rounded-lg shadow-lg z-10 max-h-48 overflow-y-auto ${
                 darkMode ? 'bg-slate-700' : 'bg-white border border-gray-300'
               }`}>
                 {filteredPatients.map((p) => (
@@ -123,7 +136,9 @@ export default function TurnoModal({ darkMode, isOpen, onClose, onSave, turno, p
                     key={p.id}
                     type="button"
                     onClick={() => selectPatient(p)}
-                    className={`w-full text-left px-3 py-2 hover:${darkMode ? 'bg-slate-600' : 'bg-gray-100'}`}
+                    className={`w-full text-left px-3 py-2 transition ${
+                      darkMode ? 'hover:bg-slate-600' : 'hover:bg-gray-100'
+                    }`}
                   >
                     {p.name} ({p.dni})
                   </button>
@@ -142,6 +157,7 @@ export default function TurnoModal({ darkMode, isOpen, onClose, onSave, turno, p
               name="date"
               value={formData.date}
               onChange={handleChange}
+              required
               className={`w-full px-3 py-2 rounded-lg border transition ${
                 darkMode
                   ? 'bg-slate-700 border-slate-600 text-white'
@@ -160,6 +176,7 @@ export default function TurnoModal({ darkMode, isOpen, onClose, onSave, turno, p
               name="time"
               value={formData.time}
               onChange={handleChange}
+              required
               className={`w-full px-3 py-2 rounded-lg border transition ${
                 darkMode
                   ? 'bg-slate-700 border-slate-600 text-white'
@@ -200,6 +217,7 @@ export default function TurnoModal({ darkMode, isOpen, onClose, onSave, turno, p
               placeholder="0.00"
               step="0.01"
               min="0"
+              required
               className={`w-full px-3 py-2 rounded-lg border transition ${
                 darkMode
                   ? 'bg-slate-700 border-slate-600 text-white placeholder-gray-400'
